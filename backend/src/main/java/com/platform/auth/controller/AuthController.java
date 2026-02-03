@@ -6,6 +6,7 @@ import com.platform.user.model.UserStatus;
 import com.platform.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -19,10 +20,12 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
 
-    public AuthController(UserRepository userRepository, JwtService jwtService) {
+    public AuthController(UserRepository userRepository, JwtService jwtService, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/login")
@@ -36,8 +39,8 @@ public class AuthController {
 
         User user = userOpt.get();
         
-        // For mock users, password is "password123"
-        if (!"password123".equals(request.getPassword())) {
+        // Verify password using BCrypt
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Invalid email or password"));
         }
@@ -65,11 +68,15 @@ public class AuthController {
                     .body(Map.of("error", "Email already registered"));
         }
 
+        // Hash the password using BCrypt
+        String hashedPassword = passwordEncoder.encode(request.getPassword());
+
         User user = User.builder()
                 .email(request.getEmail())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .googleId("manual_" + System.currentTimeMillis())
+                .passwordHash(hashedPassword)
                 .userRole(request.getUserRole())
                 .status(UserStatus.ACTIVE)
                 .build();

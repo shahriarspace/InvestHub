@@ -23,6 +23,9 @@ public class User {
     @Column(nullable = false)
     private String lastName;
 
+    @Column(name = "password_hash")
+    private String passwordHash;
+
     @Column(name = "profile_picture_url")
     private String profilePictureUrl;
 
@@ -73,6 +76,7 @@ public class User {
     public String getEmail() { return email; }
     public String getFirstName() { return firstName; }
     public String getLastName() { return lastName; }
+    public String getPasswordHash() { return passwordHash; }
     public String getProfilePictureUrl() { return profilePictureUrl; }
     public UserRole getUserRole() { return userRole; }
     public UserStatus getStatus() { return status; }
@@ -86,6 +90,7 @@ public class User {
     public void setEmail(String email) { this.email = email; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
     public void setUserRole(UserRole userRole) { this.userRole = userRole; }
     public void setStatus(UserStatus status) { this.status = status; }
@@ -104,6 +109,7 @@ public class User {
         private String email;
         private String firstName;
         private String lastName;
+        private String passwordHash;
         private String profilePictureUrl;
         private UserRole userRole;
         private UserStatus status;
@@ -116,6 +122,7 @@ public class User {
         public UserBuilder email(String email) { this.email = email; return this; }
         public UserBuilder firstName(String firstName) { this.firstName = firstName; return this; }
         public UserBuilder lastName(String lastName) { this.lastName = lastName; return this; }
+        public UserBuilder passwordHash(String passwordHash) { this.passwordHash = passwordHash; return this; }
         public UserBuilder profilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; return this; }
         public UserBuilder userRole(UserRole userRole) { this.userRole = userRole; return this; }
         public UserBuilder status(UserStatus status) { this.status = status; return this; }
@@ -130,6 +137,7 @@ public class User {
             user.email = this.email;
             user.firstName = this.firstName;
             user.lastName = this.lastName;
+            user.passwordHash = this.passwordHash;
             user.profilePictureUrl = this.profilePictureUrl;
             user.userRole = this.userRole;
             user.status = this.status;

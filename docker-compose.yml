@@ -19,6 +19,7 @@ services:
       retries: 5
     networks:
       - invest-network
+    restart: unless-stopped
 
   backend:
     build:
@@ -29,34 +30,51 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-startup_platform}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-dev}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      JWT_SECRET: ${JWT_SECRET:-your-secret-key-must-be-at-least-32-characters-long}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-prod}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_FLYWAY_ENABLED: "true"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-must-be-at-least-32-characters-long-for-jwt}
+      JAVA_OPTS: "-Xmx512m -Xms256m"
     ports:
       - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     volumes:
       - ./logs:/app/logs
     networks:
       - invest-network
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+        VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8080/ws}
     container_name: invest-frontend
     ports:
       - "3000:3000"
-    environment:
-      VITE_API_URL: http://backend:8080
-      VITE_WS_URL: ws://backend:8080/ws
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - invest-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
