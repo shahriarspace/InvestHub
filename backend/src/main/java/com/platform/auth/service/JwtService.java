@@ -4,7 +4,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
@@ -14,7 +13,6 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-@Slf4j
 public class JwtService {
 
     @Value("${jwt.secret}")
@@ -43,10 +41,10 @@ public class JwtService {
         Date expiryDate = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
-                .claims(claims)
-                .subject(subject)
-                .issuedAt(now)
-                .expiration(expiryDate)
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
                 .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -56,7 +54,7 @@ public class JwtService {
             Claims claims = getAllClaimsFromToken(token);
             return UUID.fromString(claims.getSubject());
         } catch (Exception e) {
-            log.error("Error extracting userId from token", e);
+            System.err.println("Error extracting userId from token: " + e.getMessage());
             return null;
         }
     }
@@ -66,7 +64,7 @@ public class JwtService {
             Claims claims = getAllClaimsFromToken(token);
             return (String) claims.get("email");
         } catch (Exception e) {
-            log.error("Error extracting email from token", e);
+            System.err.println("Error extracting email from token: " + e.getMessage());
             return null;
         }
     }
@@ -76,7 +74,7 @@ public class JwtService {
             Claims claims = getAllClaimsFromToken(token);
             return (String) claims.get("role");
         } catch (Exception e) {
-            log.error("Error extracting role from token", e);
+            System.err.println("Error extracting role from token: " + e.getMessage());
             return null;
         }
     }
@@ -89,7 +87,7 @@ public class JwtService {
                     .parseClaimsJws(token);
             return true;
         } catch (Exception e) {
-            log.error("JWT validation failed: {}", e.getMessage());
+            System.err.println("JWT validation failed: " + e.getMessage());
             return false;
         }
     }

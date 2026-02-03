@@ -1,19 +1,19 @@
 package com.platform.user.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+
+
+
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "user_profiles")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+
+
+
+
 public class UserProfile {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -38,7 +38,7 @@ public class UserProfile {
     private java.math.BigDecimal minTicketSize;
     private java.math.BigDecimal maxTicketSize;
 
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "TEXT")
     private String sectorsInterested;
 
     @Column(nullable = false, updatable = false)
