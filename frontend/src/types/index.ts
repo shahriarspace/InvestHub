@@ -56,10 +56,12 @@ export enum InvestorStatus {
 export interface Investor {
   id: string;
   userId: string;
-  companyName: string;
-  investmentFocus: string;
-  minInvestment: number;
-  maxInvestment: number;
+  investmentBudget: number;
+  investmentStage: string;
+  sectorsInterested: string;
+  minTicketSize: number;
+  maxTicketSize: number;
+  portfolioCompanies?: string;
   status: InvestorStatus;
   createdAt?: string;
   updatedAt?: string;

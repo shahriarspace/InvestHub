@@ -11,6 +11,9 @@ import RegisterPage from './pages/RegisterPage';
 import StartupsPage from './pages/StartupsPage';
 import StartupDetailPage from './pages/StartupDetailPage';
 import StartupFormPage from './pages/StartupFormPage';
+import InvestorsPage from './pages/InvestorsPage';
+import InvestorDetailPage from './pages/InvestorDetailPage';
+import InvestorFormPage from './pages/InvestorFormPage';
 import MessagesPage from './pages/MessagesPage';
 
 const theme = createTheme({
@@ -56,6 +59,10 @@ const AppContent: React.FC = () => {
         <Route path="/startups/new" element={<ProtectedRoute><StartupFormPage /></ProtectedRoute>} />
         <Route path="/startups/:id" element={<ProtectedRoute><StartupDetailPage /></ProtectedRoute>} />
         <Route path="/startups/:id/edit" element={<ProtectedRoute><StartupFormPage /></ProtectedRoute>} />
+        <Route path="/investors" element={<ProtectedRoute><InvestorsPage /></ProtectedRoute>} />
+        <Route path="/investors/new" element={<ProtectedRoute><InvestorFormPage /></ProtectedRoute>} />
+        <Route path="/investors/:id" element={<ProtectedRoute><InvestorDetailPage /></ProtectedRoute>} />
+        <Route path="/investors/:id/edit" element={<ProtectedRoute><InvestorFormPage /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
