@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -12,21 +12,26 @@ import {
   IconButton,
   Paper,
   Divider,
-  Badge,
   CircularProgress,
-  Chip,
+  Alert,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Autocomplete,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import PersonIcon from '@mui/icons-material/Person';
+import AddIcon from '@mui/icons-material/Add';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuth } from '../contexts/AuthContext';
 import { messagingService } from '../services/api/messagingService';
 import { userService } from '../services/api/userService';
-import { useWebSocket } from '../hooks/useWebSocket';
 import { Message, Conversation, User } from '../types';
 
 interface ConversationWithUser extends Conversation {
   otherUser?: User;
-  unreadCount?: number;
 }
 
 const MessagesPage: React.FC = () => {
@@ -36,26 +41,17 @@ const MessagesPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const {
-    connected,
-    subscribeToConversation,
-    subscribeToTyping,
-    sendMessage: wsSendMessage,
-    sendTypingIndicator,
-    markAsRead,
-    unsubscribe,
-  } = useWebSocket({
-    onConnect: () => console.log('WebSocket connected'),
-    onDisconnect: () => console.log('WebSocket disconnected'),
-    onError: (error) => console.error('WebSocket error:', error),
-  });
+  // New conversation dialog
+  const [newConvoOpen, setNewConvoOpen] = useState(false);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
-  // Scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -64,91 +60,65 @@ const MessagesPage: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Load conversations on mount
-  useEffect(() => {
-    const loadConversations = async () => {
-      if (!user?.id) return;
-      
-      try {
-        setLoading(true);
-        const data = await messagingService.getUserConversations(user.id);
-        const conversationList = data.content || data || [];
-        
-        // Fetch other user details for each conversation
-        const conversationsWithUsers = await Promise.all(
-          conversationList.map(async (conv: Conversation) => {
-            const otherUserId = conv.participantIds?.find((id: string) => id !== user.id);
-            let otherUser: User | undefined;
-            
-            if (otherUserId) {
-              try {
-                otherUser = await userService.getUserById(otherUserId);
-              } catch (e) {
-                console.warn('Could not fetch user:', otherUserId);
-              }
-            }
-            
-            return { ...conv, otherUser };
-          })
-        );
-        
-        setConversations(conversationsWithUsers);
-      } catch (error) {
-        console.error('Failed to load conversations:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Load conversations
+  const loadConversations = async () => {
+    if (!user?.id) return;
 
+    try {
+      setLoading(true);
+      setError('');
+      const data = await messagingService.getUserConversations(user.id);
+      const conversationList = Array.isArray(data) ? data : data.content || [];
+
+      // Fetch other user details for each conversation
+      const conversationsWithUsers = await Promise.all(
+        conversationList.map(async (conv: Conversation) => {
+          const otherUserId = conv.participantIds?.find((id: string) => id !== user.id);
+          let otherUser: User | undefined;
+
+          if (otherUserId) {
+            try {
+              otherUser = await userService.getUserById(otherUserId);
+            } catch (e) {
+              console.warn('Could not fetch user:', otherUserId);
+            }
+          }
+
+          return { ...conv, otherUser };
+        })
+      );
+
+      setConversations(conversationsWithUsers);
+    } catch (err: any) {
+      console.error('Failed to load conversations:', err);
+      setError('Failed to load conversations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadConversations();
   }, [user?.id]);
-
-  // Subscribe to WebSocket when conversation is selected
-  useEffect(() => {
-    if (!selectedConversation?.id || !connected) return;
-
-    // Subscribe to messages
-    subscribeToConversation(selectedConversation.id, (message) => {
-      setMessages((prev) => [...prev, message as Message]);
-      
-      // Mark as read if from other user
-      if (message.senderId !== user?.id) {
-        markAsRead(selectedConversation.id, user?.id || '');
-      }
-    });
-
-    // Subscribe to typing indicators
-    subscribeToTyping(selectedConversation.id, (indicator) => {
-      if (indicator.userId !== user?.id) {
-        setTypingUsers((prev) => {
-          const newSet = new Set(prev);
-          if (indicator.isTyping) {
-            newSet.add(indicator.userId);
-          } else {
-            newSet.delete(indicator.userId);
-          }
-          return newSet;
-        });
-      }
-    });
-
-    return () => {
-      unsubscribe(`/topic/conversation/${selectedConversation.id}`);
-      unsubscribe(`/topic/conversation/${selectedConversation.id}/typing`);
-    };
-  }, [selectedConversation?.id, connected, user?.id]);
 
   // Load messages when conversation is selected
   useEffect(() => {
     const loadMessages = async () => {
       if (!selectedConversation?.id) return;
-      
+
       try {
+        setMessagesLoading(true);
         const data = await messagingService.getMessages(selectedConversation.id);
-        const messageList = data.content || data || [];
-        setMessages(messageList.reverse()); // Reverse to show oldest first
-      } catch (error) {
-        console.error('Failed to load messages:', error);
+        const messageList = Array.isArray(data) ? data : data.content || [];
+        // Sort by createdAt ascending (oldest first)
+        messageList.sort((a: Message, b: Message) => 
+          new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+        setMessages(messageList);
+      } catch (err) {
+        console.error('Failed to load messages:', err);
+      } finally {
+        setMessagesLoading(false);
       }
     };
 
@@ -160,50 +130,67 @@ const MessagesPage: React.FC = () => {
     if (!newMessage.trim() || !selectedConversation?.id || !user?.id) return;
 
     setSendingMessage(true);
-    
+
     try {
-      // Try WebSocket first, fall back to REST API
-      if (connected) {
-        wsSendMessage(selectedConversation.id, user.id, newMessage.trim());
-      } else {
-        const message = await messagingService.sendMessage({
-          conversationId: selectedConversation.id,
-          senderId: user.id,
-          content: newMessage.trim(),
-        });
-        setMessages((prev) => [...prev, message]);
-      }
-      
+      const message = await messagingService.sendMessage({
+        conversationId: selectedConversation.id,
+        senderId: user.id,
+        content: newMessage.trim(),
+      });
+      setMessages((prev) => [...prev, message]);
       setNewMessage('');
-    } catch (error) {
-      console.error('Failed to send message:', error);
+    } catch (err: any) {
+      console.error('Failed to send message:', err);
+      setError('Failed to send message');
     } finally {
       setSendingMessage(false);
     }
   };
 
-  // Handle typing indicator
-  const handleTyping = useCallback(() => {
-    if (!selectedConversation?.id || !user?.id || !connected) return;
-
-    // Send typing indicator
-    sendTypingIndicator(selectedConversation.id, user.id, true);
-
-    // Clear previous timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    // Set timeout to stop typing indicator
-    typingTimeoutRef.current = setTimeout(() => {
-      sendTypingIndicator(selectedConversation.id, user.id, false);
-    }, 2000);
-  }, [selectedConversation?.id, user?.id, connected, sendTypingIndicator]);
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  // Load users for new conversation
+  const handleOpenNewConvo = async () => {
+    setNewConvoOpen(true);
+    setLoadingUsers(true);
+    try {
+      const data = await userService.getAllUsers(0, 100);
+      const userList = Array.isArray(data) ? data : data.content || [];
+      // Filter out current user
+      setAllUsers(userList.filter((u: User) => u.id !== user?.id));
+    } catch (err) {
+      console.error('Failed to load users:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Start new conversation
+  const handleStartConversation = async () => {
+    if (!selectedUser || !user?.id) return;
+
+    try {
+      const conversation = await messagingService.getOrCreateConversation(user.id, selectedUser.id);
+      setNewConvoOpen(false);
+      setSelectedUser(null);
+      
+      // Add to conversations list if not already there
+      const existingConvo = conversations.find(c => c.id === conversation.id);
+      if (!existingConvo) {
+        const convoWithUser = { ...conversation, otherUser: selectedUser };
+        setConversations(prev => [convoWithUser, ...prev]);
+        setSelectedConversation(convoWithUser);
+      } else {
+        setSelectedConversation({ ...existingConvo, otherUser: selectedUser });
+      }
+    } catch (err: any) {
+      console.error('Failed to create conversation:', err);
+      setError('Failed to start conversation');
     }
   };
 
@@ -217,18 +204,28 @@ const MessagesPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Messages
-        {connected && (
-          <Chip 
-            label="Live" 
-            color="success" 
-            size="small" 
-            sx={{ ml: 2 }} 
-          />
-        )}
-      </Typography>
-      
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h4">Messages</Typography>
+        <Box>
+          <IconButton onClick={loadConversations} title="Refresh">
+            <RefreshIcon />
+          </IconButton>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenNewConvo}
+          >
+            New Message
+          </Button>
+        </Box>
+      </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+
       <Paper sx={{ display: 'flex', height: '70vh' }}>
         {/* Conversations List */}
         <Box sx={{ width: 300, borderRight: 1, borderColor: 'divider' }}>
@@ -239,7 +236,9 @@ const MessagesPage: React.FC = () => {
           <List sx={{ overflow: 'auto', maxHeight: 'calc(70vh - 60px)' }}>
             {conversations.length === 0 ? (
               <ListItem>
-                <ListItemText secondary="No conversations yet" />
+                <ListItemText 
+                  secondary="No conversations yet. Click 'New Message' to start one." 
+                />
               </ListItem>
             ) : (
               conversations.map((conv) => (
@@ -250,11 +249,9 @@ const MessagesPage: React.FC = () => {
                   onClick={() => setSelectedConversation(conv)}
                 >
                   <ListItemAvatar>
-                    <Badge badgeContent={conv.unreadCount} color="primary">
-                      <Avatar>
-                        <PersonIcon />
-                      </Avatar>
-                    </Badge>
+                    <Avatar>
+                      {conv.otherUser?.firstName?.charAt(0) || <PersonIcon />}
+                    </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary={
@@ -262,7 +259,7 @@ const MessagesPage: React.FC = () => {
                         ? `${conv.otherUser.firstName} ${conv.otherUser.lastName}`
                         : 'Unknown User'
                     }
-                    secondary={conv.lastMessage || 'No messages'}
+                    secondary={conv.lastMessage || 'No messages yet'}
                     secondaryTypographyProps={{
                       noWrap: true,
                       style: { maxWidth: 180 },
@@ -285,48 +282,59 @@ const MessagesPage: React.FC = () => {
                     ? `${selectedConversation.otherUser.firstName} ${selectedConversation.otherUser.lastName}`
                     : 'Conversation'}
                 </Typography>
-                {typingUsers.size > 0 && (
-                  <Typography variant="caption" color="textSecondary">
-                    typing...
-                  </Typography>
-                )}
+                <Typography variant="caption" color="text.secondary">
+                  {selectedConversation.otherUser?.email}
+                </Typography>
               </Box>
 
               {/* Messages */}
               <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-                {messages.map((msg) => (
-                  <Box
-                    key={msg.id}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: msg.senderId === user?.id ? 'flex-end' : 'flex-start',
-                      mb: 1,
-                    }}
-                  >
-                    <Paper
+                {messagesLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : messages.length === 0 ? (
+                  <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
+                    No messages yet. Send the first message!
+                  </Typography>
+                ) : (
+                  messages.map((msg) => (
+                    <Box
+                      key={msg.id}
                       sx={{
-                        p: 1.5,
-                        maxWidth: '70%',
-                        bgcolor: msg.senderId === user?.id ? 'primary.main' : 'grey.200',
-                        color: msg.senderId === user?.id ? 'white' : 'text.primary',
+                        display: 'flex',
+                        justifyContent: msg.senderId === user?.id ? 'flex-end' : 'flex-start',
+                        mb: 1,
                       }}
                     >
-                      <Typography variant="body2">{msg.content}</Typography>
-                      <Typography
-                        variant="caption"
+                      <Paper
                         sx={{
-                          display: 'block',
-                          mt: 0.5,
-                          opacity: 0.7,
+                          p: 1.5,
+                          maxWidth: '70%',
+                          bgcolor: msg.senderId === user?.id ? 'primary.main' : 'grey.200',
+                          color: msg.senderId === user?.id ? 'white' : 'text.primary',
                         }}
                       >
-                        {msg.createdAt
-                          ? new Date(msg.createdAt).toLocaleTimeString()
-                          : ''}
-                      </Typography>
-                    </Paper>
-                  </Box>
-                ))}
+                        <Typography variant="body2">{msg.content}</Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: 'block',
+                            mt: 0.5,
+                            opacity: 0.7,
+                          }}
+                        >
+                          {msg.createdAt
+                            ? new Date(msg.createdAt).toLocaleTimeString([], { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })
+                            : ''}
+                        </Typography>
+                      </Paper>
+                    </Box>
+                  ))
+                )}
                 <div ref={messagesEndRef} />
               </Box>
 
@@ -337,20 +345,19 @@ const MessagesPage: React.FC = () => {
                     fullWidth
                     placeholder="Type a message..."
                     value={newMessage}
-                    onChange={(e) => {
-                      setNewMessage(e.target.value);
-                      handleTyping();
-                    }}
+                    onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     size="small"
                     disabled={sendingMessage}
+                    multiline
+                    maxRows={3}
                   />
                   <IconButton
                     color="primary"
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim() || sendingMessage}
                   >
-                    <SendIcon />
+                    {sendingMessage ? <CircularProgress size={24} /> : <SendIcon />}
                   </IconButton>
                 </Box>
               </Box>
@@ -362,15 +369,79 @@ const MessagesPage: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                flexDirection: 'column',
+                gap: 2,
               }}
             >
-              <Typography color="textSecondary">
-                Select a conversation to start messaging
+              <Typography color="text.secondary">
+                Select a conversation or start a new one
               </Typography>
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={handleOpenNewConvo}
+              >
+                New Message
+              </Button>
             </Box>
           )}
         </Box>
       </Paper>
+
+      {/* New Conversation Dialog */}
+      <Dialog open={newConvoOpen} onClose={() => setNewConvoOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Start New Conversation</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            {loadingUsers ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Autocomplete
+                options={allUsers}
+                getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.email})`}
+                value={selectedUser}
+                onChange={(_, newValue) => setSelectedUser(newValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Select User"
+                    placeholder="Search for a user..."
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Avatar sx={{ width: 32, height: 32 }}>
+                        {option.firstName?.charAt(0)}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="body2">
+                          {option.firstName} {option.lastName}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {option.email}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </li>
+                )}
+              />
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setNewConvoOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleStartConversation}
+            disabled={!selectedUser}
+          >
+            Start Conversation
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
