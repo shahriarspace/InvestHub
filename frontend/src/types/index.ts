@@ -77,12 +77,14 @@ export enum OfferStatus {
 
 export interface InvestmentOffer {
   id: string;
-  ideaId: string;
   investorId: string;
-  amount: number;
-  equity: number;
-  terms: string;
+  ideaId: string;
+  offeredAmount: number;
+  equityPercentage: number;
+  valuation?: number;
+  message?: string;
   status: OfferStatus;
+  expiresAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }

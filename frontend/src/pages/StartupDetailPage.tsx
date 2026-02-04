@@ -14,7 +14,7 @@ import {
   CircularProgress,
   Divider,
   Link,
-  IconButton,
+  Snackbar,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
@@ -24,6 +24,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import { startupService } from '../services/api/startupService';
 import { Startup, StartupStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import MakeOfferDialog from '../components/MakeOfferDialog';
 
 const StartupDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +33,8 @@ const StartupDetailPage: React.FC = () => {
   const [startup, setStartup] = useState<Startup | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [offerDialogOpen, setOfferDialogOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -139,7 +142,7 @@ const StartupDetailPage: React.FC = () => {
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => navigate(`/startups/${id}/invest`)}
+                onClick={() => setOfferDialogOpen(true)}
               >
                 Make Investment Offer
               </Button>
@@ -284,6 +287,23 @@ const StartupDetailPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Make Offer Dialog */}
+      <MakeOfferDialog
+        open={offerDialogOpen}
+        onClose={() => setOfferDialogOpen(false)}
+        onSuccess={() => setSuccessMessage('Investment offer submitted successfully!')}
+        startupId={startup.id}
+        startupName={startup.companyName}
+      />
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={6000}
+        onClose={() => setSuccessMessage('')}
+        message={successMessage}
+      />
     </Container>
   );
 };

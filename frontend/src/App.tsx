@@ -15,6 +15,7 @@ import InvestorsPage from './pages/InvestorsPage';
 import InvestorDetailPage from './pages/InvestorDetailPage';
 import InvestorFormPage from './pages/InvestorFormPage';
 import MessagesPage from './pages/MessagesPage';
+import OffersPage from './pages/OffersPage';
 
 const theme = createTheme({
   palette: {
@@ -63,6 +64,7 @@ const AppContent: React.FC = () => {
         <Route path="/investors/new" element={<ProtectedRoute><InvestorFormPage /></ProtectedRoute>} />
         <Route path="/investors/:id" element={<ProtectedRoute><InvestorDetailPage /></ProtectedRoute>} />
         <Route path="/investors/:id/edit" element={<ProtectedRoute><InvestorFormPage /></ProtectedRoute>} />
+        <Route path="/offers" element={<ProtectedRoute><OffersPage /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
