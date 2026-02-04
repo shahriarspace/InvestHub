@@ -6,8 +6,9 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "target": "ES2020"
+    "target": "ES2020",
+    "noEmit": true
   },
   "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "exclude": ["src/**/*.d.ts", "src/**/*.js"]
 }

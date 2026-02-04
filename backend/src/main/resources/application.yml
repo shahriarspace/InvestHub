@@ -10,6 +10,32 @@ spring:
     deserialization:
       fail-on-unknown-properties: false
 
+  # File upload configuration
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 25MB
+      max-request-size: 30MB
+
+  # Email configuration (disabled by default)
+  mail:
+    enabled: false
+    host: smtp.gmail.com
+    port: 587
+    username: 
+    password: 
+    from: noreply@startupplatform.io
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# File storage
+file:
+  upload-dir: uploads
+
 jwt:
   secret: your-secret-key-must-be-at-least-32-characters-long
   expiration-minutes: 15

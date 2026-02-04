@@ -1,15 +1,26 @@
 package com.platform.investment.service;
 
+import com.platform.email.service.EmailService;
 import com.platform.investment.model.InvestmentOffer;
 import com.platform.investment.model.InvestmentOfferDTO;
 import com.platform.investment.model.OfferStatus;
 import com.platform.investment.repository.InvestmentOfferRepository;
+import com.platform.investor.model.Investor;
+import com.platform.investor.repository.InvestorRepository;
+import com.platform.notification.service.NotificationService;
+import com.platform.startup.model.Startup;
+import com.platform.startup.repository.StartupRepository;
+import com.platform.user.model.User;
+import com.platform.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,6 +29,21 @@ public class InvestmentOfferService {
     
     @Autowired
     private InvestmentOfferRepository investmentOfferRepository;
+    
+    @Autowired
+    private NotificationService notificationService;
+    
+    @Autowired
+    private EmailService emailService;
+    
+    @Autowired
+    private StartupRepository startupRepository;
+    
+    @Autowired
+    private InvestorRepository investorRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
     
     /**
      * Get investment offer by ID
@@ -61,7 +87,16 @@ public class InvestmentOfferService {
         offer.setStatus(offerDTO.getStatus() != null ? offerDTO.getStatus() : OfferStatus.PENDING);
         offer.setExpiresAt(offerDTO.getExpiresAt());
         
-        return investmentOfferRepository.save(offer);
+        InvestmentOffer savedOffer = investmentOfferRepository.save(offer);
+        
+        // Send notification and email to startup owner
+        try {
+            notifyStartupOwnerOfNewOffer(savedOffer);
+        } catch (Exception e) {
+            // Log but don't fail the offer creation
+        }
+        
+        return savedOffer;
     }
     
     /**
@@ -120,7 +155,16 @@ public class InvestmentOfferService {
         if (offer.isPresent()) {
             InvestmentOffer o = offer.get();
             o.setStatus(OfferStatus.ACCEPTED);
-            return investmentOfferRepository.save(o);
+            InvestmentOffer savedOffer = investmentOfferRepository.save(o);
+            
+            // Notify investor
+            try {
+                notifyInvestorOfOfferStatus(savedOffer, true);
+            } catch (Exception e) {
+                // Log but don't fail
+            }
+            
+            return savedOffer;
         }
         return null;
     }
@@ -133,8 +177,88 @@ public class InvestmentOfferService {
         if (offer.isPresent()) {
             InvestmentOffer o = offer.get();
             o.setStatus(OfferStatus.REJECTED);
-            return investmentOfferRepository.save(o);
+            InvestmentOffer savedOffer = investmentOfferRepository.save(o);
+            
+            // Notify investor
+            try {
+                notifyInvestorOfOfferStatus(savedOffer, false);
+            } catch (Exception e) {
+                // Log but don't fail
+            }
+            
+            return savedOffer;
         }
         return null;
+    }
+    
+    private void notifyStartupOwnerOfNewOffer(InvestmentOffer offer) {
+        // Get startup and its owner
+        Startup startup = startupRepository.findById(offer.getIdeaId()).orElse(null);
+        if (startup == null) return;
+        
+        User startupOwner = userRepository.findById(startup.getUserId()).orElse(null);
+        if (startupOwner == null) return;
+        
+        // Get investor name
+        Investor investor = investorRepository.findById(offer.getInvestorId()).orElse(null);
+        String investorName = "An investor";
+        if (investor != null) {
+            User investorUser = userRepository.findById(investor.getUserId()).orElse(null);
+            if (investorUser != null) {
+                investorName = investorUser.getFirstName() + " " + investorUser.getLastName();
+            }
+        }
+        
+        // Send notification
+        notificationService.notifyOfferReceived(
+            startupOwner.getId(),
+            investorName,
+            startup.getCompanyName(),
+            offer.getId()
+        );
+        
+        // Send email
+        emailService.sendOfferReceivedEmail(
+            startupOwner.getEmail(),
+            investorName,
+            startup.getCompanyName(),
+            formatCurrency(offer.getOfferedAmount())
+        );
+    }
+    
+    private void notifyInvestorOfOfferStatus(InvestmentOffer offer, boolean accepted) {
+        // Get investor
+        Investor investor = investorRepository.findById(offer.getInvestorId()).orElse(null);
+        if (investor == null) return;
+        
+        User investorUser = userRepository.findById(investor.getUserId()).orElse(null);
+        if (investorUser == null) return;
+        
+        // Get startup name
+        Startup startup = startupRepository.findById(offer.getIdeaId()).orElse(null);
+        String startupName = startup != null ? startup.getCompanyName() : "Unknown Startup";
+        
+        // Send notification
+        if (accepted) {
+            notificationService.notifyOfferAccepted(investorUser.getId(), startupName, offer.getId());
+            emailService.sendOfferAcceptedEmail(
+                investorUser.getEmail(),
+                startupName,
+                formatCurrency(offer.getOfferedAmount())
+            );
+        } else {
+            notificationService.notifyOfferRejected(investorUser.getId(), startupName, offer.getId());
+            emailService.sendOfferRejectedEmail(
+                investorUser.getEmail(),
+                startupName,
+                formatCurrency(offer.getOfferedAmount())
+            );
+        }
+    }
+    
+    private String formatCurrency(BigDecimal amount) {
+        if (amount == null) return "$0";
+        NumberFormat formatter = NumberFormat.getCurrencyInstance(Locale.US);
+        return formatter.format(amount);
     }
 }

@@ -22,6 +22,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import { startupService } from '../services/api/startupService';
 import { Startup, StartupStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import FileUpload from '../components/FileUpload';
+import { FileUpload as FileUploadType } from '../services/api/fileService';
 
 const STAGES = ['Idea', 'Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C', 'Growth'];
 
@@ -49,6 +51,8 @@ const StartupFormPage: React.FC = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [logoFile, setLogoFile] = useState<FileUploadType | null>(null);
+  const [pitchDeckFile, setPitchDeckFile] = useState<FileUploadType | null>(null);
 
   useEffect(() => {
     if (isEdit && id) {
@@ -360,7 +364,47 @@ const StartupFormPage: React.FC = () => {
                   value={formData.pitchDeckUrl}
                   onChange={handleChange}
                   error={!!errors.pitchDeckUrl}
-                  helperText={errors.pitchDeckUrl}
+                  helperText={errors.pitchDeckUrl || 'Or upload a pitch deck below'}
+                />
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Media & Documents
+            </Typography>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Company Logo
+                </Typography>
+                <FileUpload
+                  fileType="STARTUP_LOGO"
+                  referenceId={id}
+                  label="Upload Logo"
+                  helperText="PNG, JPG up to 5MB"
+                  existingFile={logoFile}
+                  onUploadComplete={(file) => setLogoFile(file)}
+                  onDelete={() => setLogoFile(null)}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Pitch Deck (PDF)
+                </Typography>
+                <FileUpload
+                  fileType="PITCH_DECK"
+                  referenceId={id}
+                  label="Upload Pitch Deck"
+                  helperText="PDF up to 20MB"
+                  existingFile={pitchDeckFile}
+                  onUploadComplete={(file) => setPitchDeckFile(file)}
+                  onDelete={() => setPitchDeckFile(null)}
                 />
               </Grid>
             </Grid>

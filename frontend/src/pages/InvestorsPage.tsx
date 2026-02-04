@@ -9,21 +9,19 @@ import {
   Button,
   Typography,
   Grid,
-  CircularProgress,
   Alert,
   Chip,
-  TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  InputAdornment,
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import { investorService } from '../services/api/investorService';
 import { Investor, InvestorStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import SearchBar from '../components/SearchBar';
+import { CardGridSkeleton } from '../components/Skeletons';
 
 const STAGES = ['All', 'Idea', 'Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C', 'Growth'];
 
@@ -127,19 +125,11 @@ const InvestorsPage: React.FC = () => {
         <CardContent>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={5}>
-              <TextField
-                fullWidth
+              <SearchBar
                 placeholder="Search by sectors or portfolio..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-                size="small"
+                onChange={setSearchTerm}
+                fullWidth
               />
             </Grid>
             <Grid item xs={6} md={4}>
@@ -177,9 +167,7 @@ const InvestorsPage: React.FC = () => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
+        <CardGridSkeleton count={6} columns={{ xs: 12, sm: 6, md: 4 }} />
       ) : filteredInvestors.length === 0 ? (
         <Alert severity="info">
           {investors.length === 0

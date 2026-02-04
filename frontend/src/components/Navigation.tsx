@@ -6,6 +6,8 @@ import AccountCircle from '@mui/icons-material/AccountCircle';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
+import NotificationBell from './NotificationBell';
+import ThemeToggle from './ThemeToggle';
 
 const Navigation: React.FC = () => {
   const navigate = useNavigate();
@@ -38,6 +40,7 @@ const Navigation: React.FC = () => {
     { label: 'Investors', path: '/investors', requireAuth: true },
     { label: 'Offers', path: '/offers', requireAuth: true },
     { label: 'Messages', path: '/messages', requireAuth: true },
+    { label: 'Analytics', path: '/analytics', requireAuth: true },
   ];
 
   const isAdmin = user?.userRole === UserRole.ADMIN;
@@ -60,6 +63,8 @@ const Navigation: React.FC = () => {
 
           {isAuthenticated ? (
             <>
+              <ThemeToggle />
+              <NotificationBell />
               <IconButton size="large" onClick={handleMenuOpen} color="inherit">
                 <AccountCircle />
               </IconButton>
@@ -85,6 +90,7 @@ const Navigation: React.FC = () => {
             </>
           ) : (
             <>
+              <ThemeToggle />
               <Button color="inherit" onClick={() => navigate('/login')}>
                 Login
               </Button>
@@ -103,6 +109,11 @@ const Navigation: React.FC = () => {
       </Toolbar>
 
       <Drawer anchor="right" open={mobileOpen} onClose={handleDrawerToggle}>
+        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Menu</Typography>
+          <ThemeToggle showMenu />
+        </Box>
+        <Divider />
         <List sx={{ minWidth: 200 }}>
           {navItems.map((item) => (
             (!item.requireAuth || isAuthenticated) && (

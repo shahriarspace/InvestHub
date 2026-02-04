@@ -4,3 +4,6 @@ export * from './startupService';
 export * from './investorService';
 export * from './investmentOfferService';
 export * from './messagingService';
+export * from './notificationService';
+export * from './fileService';
+export * from './analyticsService';

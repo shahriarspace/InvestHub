@@ -26,6 +26,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import { investorService } from '../services/api/investorService';
 import { Investor, InvestorStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import FileUpload from '../components/FileUpload';
+import { FileUpload as FileUploadType } from '../services/api/fileService';
 
 const STAGES = ['Idea', 'Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C', 'Growth'];
 const SECTORS = [
@@ -65,6 +67,7 @@ const InvestorFormPage: React.FC = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [photoFile, setPhotoFile] = useState<FileUploadType | null>(null);
 
   useEffect(() => {
     if (isEdit && id) {
@@ -340,6 +343,28 @@ const InvestorFormPage: React.FC = () => {
                     </Typography>
                   )}
                 </FormControl>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Profile Photo
+            </Typography>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <FileUpload
+                  fileType="INVESTOR_PHOTO"
+                  referenceId={id}
+                  label="Upload Photo"
+                  helperText="PNG, JPG up to 5MB"
+                  existingFile={photoFile}
+                  onUploadComplete={(file) => setPhotoFile(file)}
+                  onDelete={() => setPhotoFile(null)}
+                />
               </Grid>
             </Grid>
           </CardContent>
