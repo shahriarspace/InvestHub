@@ -18,7 +18,7 @@ public interface FileUploadRepository extends JpaRepository<FileUpload, UUID> {
     
     List<FileUpload> findByUserId(UUID userId);
     
-    Optional<FileUpload> findByReferenceIdAndFileType(UUID referenceId, FileType fileType, UUID userId);
+    Optional<FileUpload> findByReferenceIdAndFileTypeAndUserId(UUID referenceId, FileType fileType, UUID userId);
     
     List<FileUpload> findByUserIdAndFileType(UUID userId, FileType fileType);
 }
