@@ -4,11 +4,25 @@
 *.swp
 *.swo
 *.iml
+.classpath
+.project
+.settings/
 
 # Build
 target/
 build/
 node_modules/
+dist/
+
+# TypeScript build artifacts
+*.tsbuildinfo
+*.d.ts
+!*.test.d.ts
+
+# Compiled JS from TypeScript (keep source .ts files)
+frontend/src/**/*.js
+!frontend/src/**/*.test.js
+frontend/vite.config.js
 
 # Dependencies
 *.jar
@@ -33,3 +47,4 @@ Thumbs.db
 
 # Misc
 .DS_Store
+nul
