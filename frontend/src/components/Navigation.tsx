@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppBar, Toolbar, Box, Button, IconButton, Menu, MenuItem, Typography, Drawer, List, ListItem, ListItemText } from '@mui/material';
+import { AppBar, Toolbar, Box, Button, IconButton, Menu, MenuItem, Typography, Drawer, List, ListItem, ListItemText, Divider } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircle from '@mui/icons-material/AccountCircle';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useAuth } from '../contexts/AuthContext';
+import { UserRole } from '../types';
 
 const Navigation: React.FC = () => {
   const navigate = useNavigate();
@@ -31,8 +33,14 @@ const Navigation: React.FC = () => {
 
   const navItems = [
     { label: 'Home', path: '/' },
+    { label: 'Dashboard', path: '/dashboard', requireAuth: true },
     { label: 'Startups', path: '/startups', requireAuth: true },
+    { label: 'Investors', path: '/investors', requireAuth: true },
+    { label: 'Offers', path: '/offers', requireAuth: true },
+    { label: 'Messages', path: '/messages', requireAuth: true },
   ];
+
+  const isAdmin = user?.userRole === UserRole.ADMIN;
 
   return (
     <AppBar position="static" sx={{ mb: 4 }}>
@@ -59,6 +67,19 @@ const Navigation: React.FC = () => {
                 <MenuItem disabled>
                   <Typography variant="body2">{user?.firstName} {user?.lastName}</Typography>
                 </MenuItem>
+                <Divider />
+                <MenuItem onClick={() => { navigate('/profile'); handleMenuClose(); }}>
+                  My Profile
+                </MenuItem>
+                <MenuItem onClick={() => { navigate('/dashboard'); handleMenuClose(); }}>
+                  Dashboard
+                </MenuItem>
+                {isAdmin && (
+                  <MenuItem onClick={() => { navigate('/admin'); handleMenuClose(); }}>
+                    Admin Panel
+                  </MenuItem>
+                )}
+                <Divider />
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
             </>
@@ -82,7 +103,7 @@ const Navigation: React.FC = () => {
       </Toolbar>
 
       <Drawer anchor="right" open={mobileOpen} onClose={handleDrawerToggle}>
-        <List>
+        <List sx={{ minWidth: 200 }}>
           {navItems.map((item) => (
             (!item.requireAuth || isAuthenticated) && (
               <ListItem button key={item.label} onClick={() => { navigate(item.path); setMobileOpen(false); }}>
@@ -92,9 +113,23 @@ const Navigation: React.FC = () => {
           ))}
         </List>
         {isAuthenticated ? (
-          <MenuItem onClick={handleLogout} sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
-            Logout
-          </MenuItem>
+          <>
+            <Divider />
+            <List>
+              <ListItem button onClick={() => { navigate('/profile'); setMobileOpen(false); }}>
+                <ListItemText primary="My Profile" />
+              </ListItem>
+              {isAdmin && (
+                <ListItem button onClick={() => { navigate('/admin'); setMobileOpen(false); }}>
+                  <ListItemText primary="Admin Panel" />
+                </ListItem>
+              )}
+            </List>
+            <Divider />
+            <MenuItem onClick={handleLogout}>
+              Logout
+            </MenuItem>
+          </>
         ) : (
           <Box sx={{ p: 2, display: 'flex', gap: 1, flexDirection: 'column' }}>
             <Button fullWidth color="primary" variant="outlined" onClick={() => { navigate('/login'); setMobileOpen(false); }}>
