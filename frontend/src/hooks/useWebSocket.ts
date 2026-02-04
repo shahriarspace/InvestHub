@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import SockJS from 'sockjs-client';
 import { Client, Frame, Message as StompMessage } from 'stompjs';
 
-const WS_URL = 'http://localhost:8080/ws';
+// Use relative URL for WebSocket (nginx proxies /ws to backend)
+const WS_URL = '/ws';
 
 interface UseWebSocketOptions {
   onConnect?: () => void;
