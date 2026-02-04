@@ -9,6 +9,8 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import StartupsPage from './pages/StartupsPage';
+import StartupDetailPage from './pages/StartupDetailPage';
+import StartupFormPage from './pages/StartupFormPage';
 import MessagesPage from './pages/MessagesPage';
 
 const theme = createTheme({
@@ -51,6 +53,9 @@ const AppContent: React.FC = () => {
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
         <Route path="/startups" element={<ProtectedRoute><StartupsPage /></ProtectedRoute>} />
+        <Route path="/startups/new" element={<ProtectedRoute><StartupFormPage /></ProtectedRoute>} />
+        <Route path="/startups/:id" element={<ProtectedRoute><StartupDetailPage /></ProtectedRoute>} />
+        <Route path="/startups/:id/edit" element={<ProtectedRoute><StartupFormPage /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

@@ -33,11 +33,14 @@ export enum StartupStatus {
 export interface Startup {
   id: string;
   userId: string;
-  name: string;
+  companyName: string;
   description: string;
-  industry: string;
+  stage: string;
   fundingGoal: number;
-  fundingRaised: number;
+  currentFunding: number;
+  website?: string;
+  linkedinUrl?: string;
+  pitchDeckUrl?: string;
   status: StartupStatus;
   createdAt?: string;
   updatedAt?: string;
