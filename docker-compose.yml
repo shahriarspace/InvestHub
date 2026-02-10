@@ -9,9 +9,10 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-startup_platform}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
@@ -22,62 +23,58 @@ services:
     restart: unless-stopped
 
   backend:
+    image: invest-backend:latest
+    container_name: invest-backend
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: invest-backend
+      dockerfile: Dockerfile.prebuilt
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-startup_platform}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-prod}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_FLYWAY_ENABLED: "true"
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      JWT_SECRET: ${JWT_SECRET:-your-secret-key-must-be-at-least-32-characters-long-for-jwt}
-      JAVA_OPTS: "-Xmx512m -Xms256m"
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-dev}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-must-be-at-least-32-characters-long}
+      JWT_EXPIRY_MINUTES: ${JWT_EXPIRY_MINUTES:-15}
+      JWT_REFRESH_EXPIRY_DAYS: ${JWT_REFRESH_EXPIRY_DAYS:-7}
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
     volumes:
       - ./logs:/app/logs
     networks:
       - invest-network
     restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
-        VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8080/ws}
-    container_name: invest-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      backend:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+
+  frontend:
+    image: invest-frontend:latest
+    container_name: invest-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prebuilt
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://backend:8080}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://backend:8080/ws}
+    depends_on:
+      - backend
     networks:
       - invest-network
     restart: unless-stopped
 
 volumes:
   postgres_data:
+    driver: local
 
 networks:
   invest-network:
