@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -12,7 +10,6 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
@@ -53,7 +50,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
   frontend:
     image: invest-frontend:latest
@@ -63,9 +60,6 @@ services:
       dockerfile: Dockerfile.prebuilt
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://backend:8080}
-      VITE_WS_URL: ${VITE_WS_URL:-ws://backend:8080/ws}
     depends_on:
       - backend
     networks:
